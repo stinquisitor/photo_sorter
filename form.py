@@ -131,8 +131,8 @@ class ExtChecker:
 class Window:
     def __init__(self):
         self.root = Tk()
-        self.root.title('Сортировка фото')
-        self.root.resizable(0, 0)
+        self.root.title('Сортировка фото ' + constants.version)
+        self.root.resizable(False, False)
         self.tab_control = ttk.Notebook(self.root)
         printing_tab = ttk.Frame(self.tab_control)
         album_tab = ttk.Frame(self.tab_control)
@@ -144,7 +144,7 @@ class Window:
         self.printing_ext_checker = ExtChecker(printing_tab)
 
         self.is_retush = BooleanVar(value=False)
-        self.retush_check = ttk.Checkbutton(master=printing_tab, variable=self.is_retush, text='Режим ретуши')
+        self.retush_check = ttk.Checkbutton(master=printing_tab, variable=self.is_retush, text='В одну папку')
         self.retush_check.pack()
 
         self.printing_logger = Logger(printing_tab)
@@ -154,6 +154,12 @@ class Window:
         self.album_table_path_fd = FileDialog(album_tab, 'Путь до excel-таблицы')
         self.album_unsorted_path_fd = FileDialog(album_tab, 'Путь до папки с фото', ask_dir=True)
         self.album_ext_checker = ExtChecker(album_tab)
+
+        # потом всё в одно интегрируем
+        self.is_retush_album = BooleanVar(value=False)
+        self.retush_check_album = ttk.Checkbutton(master=album_tab, variable=self.is_retush_album, text='В одну папку')
+        self.retush_check_album.pack()
+
         self.album_logger = Logger(album_tab)
         self.album_sort_button = Button(master=album_tab, text='Сортировать', command=self._sort_album)
         self.album_sort_button.pack()
@@ -196,7 +202,7 @@ class Window:
                                  self.album_logger,
                                  self._loop,
                                  summary,
-                                 self.album_ext_checker.get(), self.is_retush.get())
+                                 self.album_ext_checker.get(), self.is_retush_album.get())
             sorter.sort()
         except Exception as exc:
             self.printing_logger.error(str(exc))
@@ -204,4 +210,3 @@ class Window:
 
     def run(self):
         self.root.mainloop()
-
