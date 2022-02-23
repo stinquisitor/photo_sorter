@@ -14,6 +14,7 @@ from tkinter import Tk
 from tkinter import ttk
 from tkinter import filedialog as fd
 from tkinter import BooleanVar
+from tkinter import LEFT
 from pathlib import Path
 import constants
 from tkinter.scrolledtext import ScrolledText
@@ -133,44 +134,40 @@ class Window:
         self.root = Tk()
         self.root.title('Сортировка фото ' + constants.version)
         self.root.resizable(False, False)
-        self.tab_control = ttk.Notebook(self.root)
-        printing_tab = ttk.Frame(self.tab_control)
-        album_tab = ttk.Frame(self.tab_control)
-        self.tab_control.add(printing_tab, text='Печать')
-        self.tab_control.add(album_tab, text='Альбом')
 
-        self.printing_table_path_fd = FileDialog(printing_tab, 'Путь до excel-таблицы')
-        self.printing_unsorted_path_fd = FileDialog(printing_tab, 'Путь до папки с фото', ask_dir=True)
-        self.printing_ext_checker = ExtChecker(printing_tab)
+        self.top_frame = ttk.Frame(self.root)
+        self.bottom_frame = ttk.Frame(self.root)
+        self.top_frame.pack()
+        self.bottom_frame.pack()
+
+        self.left_frame = ttk.Frame(self.top_frame)
+        self.right_frame = ttk.Frame(self.top_frame)
+        self.left_frame.pack(side=LEFT)
+        self.right_frame.pack(side=LEFT)
+
+        self.printing_logger = Logger(self.bottom_frame)
+
+        self.printing_table_path_fd = FileDialog(self.left_frame, 'Путь до excel-таблицы')
+        self.printing_unsorted_path_fd = FileDialog(self.left_frame, 'Путь до папки с фото', ask_dir=True)
+        self.printing_ext_checker = ExtChecker(self.right_frame)
 
         self.is_retush = BooleanVar(value=False)
-        self.retush_check = ttk.Checkbutton(master=printing_tab, variable=self.is_retush, text='В одну папку')
+        self.retush_check = ttk.Checkbutton(master=self.right_frame, variable=self.is_retush, text='В одну папку')
         self.retush_check.pack()
 
-        self.printing_logger = Logger(printing_tab)
-        self.printing_sort_button = Button(master=printing_tab, text='Сортировать', command=self._sort_printing)
+        self.sub_dir_include = BooleanVar(value=False)
+        self.subdir_check = ttk.Checkbutton(master=self.right_frame, variable=self.sub_dir_include, text='Просматривать подпапки?')
+        self.subdir_check.pack()
+
+        self.printing_sort_button = Button(master=self.left_frame, text='Сортировать', command=self._sort_printing)
         self.printing_sort_button.pack()
-
-        self.album_table_path_fd = FileDialog(album_tab, 'Путь до excel-таблицы')
-        self.album_unsorted_path_fd = FileDialog(album_tab, 'Путь до папки с фото', ask_dir=True)
-        self.album_ext_checker = ExtChecker(album_tab)
-
-        # потом всё в одно интегрируем
-        self.is_retush_album = BooleanVar(value=False)
-        self.retush_check_album = ttk.Checkbutton(master=album_tab, variable=self.is_retush_album, text='В одну папку')
-        self.retush_check_album.pack()
-
-        self.album_logger = Logger(album_tab)
-        self.album_sort_button = Button(master=album_tab, text='Сортировать', command=self._sort_album)
-        self.album_sort_button.pack()
-
-        self.tab_control.pack(expand=1, fill='both')
 
         self._loop = asyncio.get_event_loop()
 
     def __del__(self):
         self._loop.close()
 
+    # Сейчас переделали под универсальный формат
     def _sort_printing(self):
         try:
             unsorted = self.printing_unsorted_path_fd.get_file_name()
@@ -183,26 +180,7 @@ class Window:
             sorter = PrintingSorter(table, unsorted, outdir,
                                     self.printing_logger,
                                     self._loop, summary,
-                                    self.printing_ext_checker.get(), self.is_retush.get())
-            sorter.sort()
-        except Exception as exc:
-            self.printing_logger.error(str(exc))
-            raise
-
-    def _sort_album(self):
-        try:
-            unsorted = self.album_unsorted_path_fd.get_file_name()
-            outdir = os.path.join(unsorted, 'Сортировка')
-            table = self.album_table_path_fd.get_file_name()
-            self.album_logger.info(f'Таблица: {table}')
-            self.album_logger.info(f'Несортированные фото: {unsorted}')
-            self.album_logger.info(f'Сортированные фото: {outdir}')
-            summary = Summary(self.printing_logger)
-            sorter = AlbumSorter(table, unsorted, outdir,
-                                 self.album_logger,
-                                 self._loop,
-                                 summary,
-                                 self.album_ext_checker.get(), self.is_retush_album.get())
+                                    self.printing_ext_checker.get(), self.is_retush.get(), self.sub_dir_include.get())
             sorter.sort()
         except Exception as exc:
             self.printing_logger.error(str(exc))

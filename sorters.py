@@ -12,9 +12,9 @@ from tasks import TaskCreator
 
 class BaseSorter:
     def __init__(self, table: str, unsorted: str, outdir: str, logger, loop, summary, extension: str,
-                 retush_mode: bool):
+                 retush_mode: bool, sub_dir: bool):
         self._summary = summary
-        self._task_creator = TaskCreator(summary, extension, Path(unsorted))
+        self._task_creator = TaskCreator(summary, extension, Path(unsorted), sub_dir)
         self._loop = loop
         self._logger = logger
         self._table = Path(table)
@@ -150,8 +150,8 @@ class BaseSorter:
 
 class PrintingSorter(BaseSorter):
     def __init__(self, table: str, unsorted: str, outdir: str, logger, loop, summary, extension: str,
-                 retush_mode: bool):
-        super().__init__(table, unsorted, outdir, logger, loop, summary, extension, retush_mode)
+                 retush_mode: bool, subdir_include: bool):
+        super().__init__(table, unsorted, outdir, logger, loop, summary, extension, retush_mode, subdir_include)
 
     def sort(self):
         self._logger.clear()
@@ -402,8 +402,8 @@ class PrintingSorter(BaseSorter):
 # на данный момент - в альбомах вся информация идёт подряд, без пропусков и без лишних заголовков.
 class AlbumSorter(BaseSorter):
     def __init__(self, table: str, unsorted: str, outdir: str, logger, loop, summary, extension: str,
-                 retush_mode: bool):
-        super().__init__(table, unsorted, outdir, logger, loop, summary, extension, retush_mode)
+                 retush_mode: bool, sub_dir: bool):
+        super().__init__(table, unsorted, outdir, logger, loop, summary, extension, retush_mode, sub_dir)
 
     def sort(self):
         self._logger.clear()

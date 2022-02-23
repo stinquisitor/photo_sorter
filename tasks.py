@@ -7,12 +7,12 @@ import constants
 
 
 class TaskCreator:
-    def __init__(self, summary, extension, unsorted_dir: Path):
+    def __init__(self, summary, extension, unsorted_dir: Path, sub_dir=False):
         self._tasks = {}
         self._summary = summary
         self._extension = extension
         self._file_list = {}
-        self.fill_file_list(unsorted_dir)
+        self.fill_file_list(unsorted_dir, sub_dir)
 
     def strip_file_name(self, name: str):
         import re
@@ -24,7 +24,7 @@ class TaskCreator:
 
     # создадим список файлов, чтобы не заниматься потом фигнёй с поиском файла в цикле.
     # поскольку вариантов может быть по факту много с расширениями.
-    def fill_file_list(self, unsorted_dir: Path):
+    def fill_file_list(self, unsorted_dir: Path, sub_dir=False):
         # сначала получаем список файлов с заданным расширением.
         # если установлено "ВСЕ" - не смотрим на расширения
         if self._extension == 'ВСЕ':
@@ -32,7 +32,10 @@ class TaskCreator:
                 if Path.is_file(item):
                     num, ext = self.strip_file_name(item.name)
                     if ext is not None and ext in constants.extensions:
-                        self._file_list[str(num)] = item.name
+                        self._file_list[str(num)] = item
+                # если включаем поддиректории, то рекурсивно проходим и подпапки
+                elif sub_dir:
+                    self.fill_file_list(item, sub_dir)
 
         # если установлено "ФОТО" - смотрим только фото-расширения
         elif self._extension == 'ФОТО':
@@ -40,13 +43,19 @@ class TaskCreator:
                 if Path.is_file(item):
                     num, ext = self.strip_file_name(item.name)
                     if ext is not None and ext in constants.extensions:
-                        self._file_list[str(num)] = item.name
+                        self._file_list[str(num)] = item
+                # если включаем поддиректории, то рекурсивно проходим и подпапки
+                elif sub_dir:
+                    self.fill_file_list(item, sub_dir)
         else:
             for item in Path.iterdir(unsorted_dir):
                 if Path.is_file(item):
                     num, ext = self.strip_file_name(item.name)
                     if ext is not None and ext == self._extension:
-                        self._file_list[str(num)] = item.name
+                        self._file_list[str(num)] = item
+                # если включаем поддиректории, то рекурсивно проходим и подпапки
+                elif sub_dir:
+                    self.fill_file_list(item, sub_dir)
 
     def add_task(self, unsorted_dir: Path, num: str, out_dir: Path, logger, copies: int = 1,
                  summary=True, metadata=None):
@@ -80,25 +89,16 @@ class Task:
         self._filename = filename
 
     async def copy_file(self):
-        missed = True
-
-        cur_file = Path(f'{str(self._unsorted_dir)}/{self._filename}')
-        missed = False
-        async with aiofiles.open(cur_file, mode='rb') as input_file:
+        async with aiofiles.open(self._filename, mode='rb') as input_file:
             self._out_dir.mkdir(exist_ok=True)
-            out_file_name = cur_file.name if self._cnt <= 1 else f'+{self._cnt}_{cur_file.name}'
+            out_file_name = self._filename.name if self._cnt <= 1 else f'+{self._cnt}_{self._filename.name}'
             async with aiofiles.open(str(self._out_dir / out_file_name), mode='wb') as out_file:
                 data = await input_file.read()
                 await out_file.write(data)
 
-                self._logger.info(f'Скопирован файл {cur_file.name} в директорию {self._out_dir}')
+                self._logger.info(f'Скопирован файл {self._filename.name} в директорию {self._out_dir}')
                 if self._summary:
                     self._summary.add(self._out_dir, self._cnt, photo_name=self._num)
-
-        if missed:
-            if self._summary:
-                self._summary.add_miss_file(self._num, self._out_dir, self._metadata)
-
 
     async def copy_file_old(self):
         missed = True
