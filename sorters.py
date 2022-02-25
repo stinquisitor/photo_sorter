@@ -155,7 +155,7 @@ class PrintingSorter(BaseSorter):
 
     def sort(self):
         self._logger.clear()
-        wb = load_workbook(self._table)
+        wb = load_workbook(self._table, data_only=True)
         # настройки
         try:
             settings = self._get_settings(wb)
@@ -167,38 +167,23 @@ class PrintingSorter(BaseSorter):
         ws = wb.worksheets[0]
 
         table_head = None
-        table_sub_head = None
         # идём построчно
         for row in ws.values:
             values = tuple(row)
             # увидели в столбце B символ № - значит нашли "голову"
             if '№' == values[1]:
                 table_head = values
-                # следующая итрерация должна получить вторую строку заголовка!
-                table_sub_head = None
                 # когда нашли голову - идём на следующую строку и сохраняем значения "головы".
                 continue
-            # если сюда пришли и "голова" есть - включаем второй этап. Нам нужно найти стоблбцы значащие
-            # и распределить их по группам. Есть группы стандартные, а есть для фото в эл. виде
-            if table_head and table_sub_head is None:
-                table_sub_head = values
-                continue
-
-            # нашли строку со значениями под заголовком
-            if table_head and table_sub_head:
-                # быстренько проверим, если строка - пустая целиком (все None) - значит это строка между значениями.
-                # пропускаем тогда и установим всё в None.
-                # криво
-                flag = False
-                for l in range(len(table_head)):
-                    if values[l]:
-                        flag = True
-                        break
-                if not flag:
-                    table_head = None
-                    table_sub_head = None
+            # ищем теперь значащие строки.
+            # в значащих строках в values[1] будут числа.
+            if table_head:
+                # если values[1] можно привести к целому числу - значит строка со значениями.
+                try:
+                    num = int(values[1])
+                except (TypeError, ValueError):
                     continue
-                # будем итерироваться по длинне строки.
+                # будем итерироваться по длине строки.
                 # поскольку нужно следить за значениями сразу в трёх строках
                 # начнём с 3-го столбца
                 for l in range(2, len(table_head)):
@@ -213,15 +198,16 @@ class PrintingSorter(BaseSorter):
                             # в данном режиме всё кидаем просто в outdir
                             val = values[l]
                             self._get_by_formats_new_retush(val, self._outdir,
-                                                     str(settings['третье в подарок?'][l]).upper() == 'ДА',
-                                                     str(settings['сложный формат'][l]).upper() == 'ДА')
+                                                            str(settings['третье в подарок?'][l]).upper() == 'ДА',
+                                                            str(settings['сложный формат'][l]).upper() == 'ДА')
                         # не в режиме ретуши, раскладываем по папкам
                         elif not self._retush_mode:
                             val = values[l]
                             outdir = self._outdir / settings['папка для складывания'][l]
                             if str(settings['сложный формат'][l]).upper() == 'ДА':
                                 self._get_by_formats_new_complex(val, outdir,
-                                                         str(settings['третье в подарок?'][l]).upper() == 'ДА', size_to_folder)
+                                                                 str(settings['третье в подарок?'][l]).upper() == 'ДА',
+                                                                 size_to_folder)
                             else:
                                 self._get_by_formats_new(val, outdir,
                                                          str(settings['третье в подарок?'][l]).upper() == 'ДА')
@@ -257,7 +243,6 @@ class PrintingSorter(BaseSorter):
                     cc = int(count) + int(c)
             self._task_creator.add_task(self._unsorted, num, outdir, self._logger,
                                         copies=int(cc), metadata='')
-
 
     ################ OLD CODE
     # потом удалю.
@@ -331,7 +316,6 @@ class PrintingSorter(BaseSorter):
         self._write_summary_report()
         self._logger.info('Сортировка окончена')
 
-
     def _get_by_formats(self, head, values):
         for i in range(0, len(values)):
             if values[i] is None:
@@ -398,6 +382,7 @@ class PrintingSorter(BaseSorter):
         except Exception as te:
             pass
 
+
 # основное отличие - разделение по видам альбомов. макси и стандарт.
 # на данный момент - в альбомах вся информация идёт подряд, без пропусков и без лишних заголовков.
 class AlbumSorter(BaseSorter):
@@ -456,15 +441,16 @@ class AlbumSorter(BaseSorter):
                             # в данном режиме всё кидаем просто в outdir
                             val = values[l]
                             self._get_by_formats_new_retush(val, self._outdir,
-                                                     str(settings['третье в подарок?'][l]).upper() == 'ДА',
-                                                     str(settings['сложный формат'][l]).upper() == 'ДА')
+                                                            str(settings['третье в подарок?'][l]).upper() == 'ДА',
+                                                            str(settings['сложный формат'][l]).upper() == 'ДА')
                         # не в режиме ретуши, раскладываем по папкам
                         elif not self._retush_mode:
                             val = values[l]
                             outdir = self._outdir / settings['папка для складывания'][l]
                             if str(settings['сложный формат'][l]).upper() == 'ДА':
                                 self._get_by_formats_new_complex(val, outdir,
-                                                         str(settings['третье в подарок?'][l]).upper() == 'ДА', size_to_folder)
+                                                                 str(settings['третье в подарок?'][l]).upper() == 'ДА',
+                                                                 size_to_folder)
                             else:
                                 self._get_by_formats_new(val, outdir,
                                                          str(settings['третье в подарок?'][l]).upper() == 'ДА')
@@ -476,9 +462,7 @@ class AlbumSorter(BaseSorter):
         self._write_summary_report()
         self._logger.info('Сортировка окончена')
 
-
-
-###########################OLD CODE
+    ###########################OLD CODE
     def sort_old(self):
         self._logger.clear()
         wb = load_workbook(self._table)
