@@ -92,6 +92,8 @@ class BaseSorter:
     # (хихи, вот и пригодился размер фото)
     @classmethod
     def _get_num_count_complex(cls, s: str):
+        # приведём все А к одному виду (английскому)
+        s = s.replace('А', 'A')
         # 1. делаем разбивку по символам новой строки или ,
         all_list = []
         list = s.split('\n')
@@ -181,8 +183,11 @@ class PrintingSorter(BaseSorter):
                 # если values[1] можно привести к целому числу - значит строка со значениями.
                 try:
                     num = int(values[1])
+                    # заодно сразу фио сохраним (удалим переводы строк ненужные)
+                    name = values[2].replace('\n', '')
                 except (TypeError, ValueError):
                     continue
+
                 # будем итерироваться по длине строки.
                 # поскольку нужно следить за значениями сразу в трёх строках
                 # начнём с 3-го столбца
@@ -204,6 +209,7 @@ class PrintingSorter(BaseSorter):
                         elif not self._retush_mode:
                             val = values[l]
                             outdir = self._outdir / settings['папка для складывания'][l]
+                            outdir = Path(str(outdir).replace('_name_', name))
                             if str(settings['сложный формат'][l]).upper() == 'ДА':
                                 self._get_by_formats_new_complex(val, outdir,
                                                                  str(settings['третье в подарок?'][l]).upper() == 'ДА',
@@ -224,7 +230,7 @@ class PrintingSorter(BaseSorter):
         numbers = self._get_num_count_complex(val)
         for num, count, size in numbers:
             cc = int(count)
-            out_dir = outdir + size_to_folder[size]
+            out_dir = Path(str(outdir).replace('_size_', size_to_folder[size]))
             if third_gift:
                 if int(count) >= 2:
                     c = int(count) / 2

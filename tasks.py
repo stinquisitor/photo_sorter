@@ -90,7 +90,7 @@ class Task:
 
     async def copy_file(self):
         async with aiofiles.open(self._filename, mode='rb') as input_file:
-            self._out_dir.mkdir(exist_ok=True)
+            self._out_dir.mkdir(parents=True, exist_ok=True)
             out_file_name = self._filename.name if self._cnt <= 1 else f'+{self._cnt}_{self._filename.name}'
             async with aiofiles.open(str(self._out_dir / out_file_name), mode='wb') as out_file:
                 data = await input_file.read()
