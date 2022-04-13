@@ -118,7 +118,11 @@ class BaseSorter:
     # 3. диапазон, например 1234-1244
     @classmethod
     def _get_num_count(cls, s: str):
-        all_num = set(re.findall('(\d+)', s))
+        try:
+            all_num = set(re.findall('(\d+)', s))
+        except TypeError:
+            print(s)
+            return
         multiple_num = re.findall('(\d+)\s*\(?(\d+)\s*шт', s)
         range_num = re.findall('(\d+)[ ]*-[ ]*(\d+).*', s)
         s1 = set(map(lambda x: x[0], multiple_num))
@@ -185,11 +189,11 @@ class PrintingSorter(BaseSorter):
                     num = int(values[1])
                     # заодно сразу фио сохраним (удалим переводы строк ненужные)
                     name = values[2].replace('\n', '')
-                except (TypeError, ValueError):
+                    # заодно сразу проверим что ФИО не пустое
+                except (TypeError, ValueError, AttributeError):
                     continue
 
                 # будем итерироваться по длине строки.
-                # поскольку нужно следить за значениями сразу в трёх строках
                 # начнём с 3-го столбца
                 for l in range(2, len(table_head)):
                     # если значений нет - сразу дальше.
@@ -201,22 +205,55 @@ class PrintingSorter(BaseSorter):
                         # в режиме ретуши и раскладываем
                         if self._retush_mode and settings['раскладывать для ретуши'][l] == 'ДА':
                             # в данном режиме всё кидаем просто в outdir
-                            val = values[l]
-                            self._get_by_formats_new_retush(val, self._outdir,
+                            val = str(values[l])
+                            try:
+                                self._get_by_formats_new_retush(val, self._outdir,
                                                             str(settings['третье в подарок?'][l]).upper() == 'ДА',
                                                             str(settings['сложный формат'][l]).upper() == 'ДА')
+                            except Exception as err:
+                                self._logger.error('Ошибка при обработке строки (ретушь): '+str(values[1]))
+                                self._logger.error('Столбец: ' + str(l))
+                                self._logger.error('Значение: ' + val)
+                                self._logger.error('Текст ошибки: ' + str(err))
+                                self._logger.error('-------------------------------------')
+                                continue
                         # не в режиме ретуши, раскладываем по папкам
                         elif not self._retush_mode:
-                            val = values[l]
-                            outdir = self._outdir / settings['папка для складывания'][l]
-                            outdir = Path(str(outdir).replace('_name_', name))
+                            val = str(values[l])
+                            try:
+                                outdir = self._outdir / settings['папка для складывания'][l]
+                                outdir = Path(str(outdir).replace('_name_', name))
+                            except Exception as err:
+                                self._logger.error('Ошибка при определении пути для складывания: ')
+                                self._logger.error('Столбец: ' + str(l))
+                                self._logger.error('Значение: ' + settings['папка для складывания'][l])
+                                self._logger.error('Текст ошибки: ' + str(err))
+                                continue
                             if str(settings['сложный формат'][l]).upper() == 'ДА':
-                                self._get_by_formats_new_complex(val, outdir,
+                                try:
+                                    self._get_by_formats_new_complex(val, outdir,
                                                                  str(settings['третье в подарок?'][l]).upper() == 'ДА',
                                                                  size_to_folder)
+                                except Exception as err:
+                                    self._logger.error('Ошибка при обработке строки (сложный формат): ' + str(values[1]))
+                                    self._logger.error('Столбец: ' + str(l))
+                                    self._logger.error('Значение: ' + val)
+                                    self._logger.error('Текст ошибки: ' + str(err))
+                                    self._logger.error('-------------------------------------')
+                                    continue
+
                             else:
-                                self._get_by_formats_new(val, outdir,
+                                try:
+                                    self._get_by_formats_new(val, outdir,
                                                          str(settings['третье в подарок?'][l]).upper() == 'ДА')
+                                except Exception as err:
+                                    self._logger.error('Ошибка при обработке строки (простой формат): ' + str(values[1]))
+                                    self._logger.error('Столбец: ' + str(l))
+                                    self._logger.error('Значение: ' + val)
+                                    self._logger.error('Текст ошибки: ' + str(err))
+                                    self._logger.error('-------------------------------------')
+                                    continue
+
                         else:
                             continue
         self._run_tasks()
